@@ -1,0 +1,320 @@
+import random
+import math
+
+
+class JogoDaVelha:
+    def __init__(self):
+        self.tabuleiro = [" " for _ in range(9)]
+
+        # Todas as combinações que podem gerar vitória
+        self.combinacoes = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6]
+        ]
+
+    def mostrar_tabuleiro(self):
+        print()
+        for linha in range(3):
+            inicio = linha * 3
+
+            print(
+                f" {self.tabuleiro[inicio]} | "
+                f"{self.tabuleiro[inicio + 1]} | "
+                f"{self.tabuleiro[inicio + 2]}"
+            )
+
+            if linha < 2:
+                print("---+---+---")
+
+        print()
+
+    def mostrar_posicoes(self):
+        print("""
+ 1 | 2 | 3
+---+---+---
+ 4 | 5 | 6
+---+---+---
+ 7 | 8 | 9
+""")
+
+    def casas_livres(self):
+        return [
+            i for i in range(9)
+            if self.tabuleiro[i] == " "
+        ]
+
+    def vencedor(self, jogador):
+        for combinacao in self.combinacoes:
+            if all(
+                self.tabuleiro[posicao] == jogador
+                for posicao in combinacao
+            ):
+                return True
+
+        return False
+
+    def empate(self):
+        return (
+            len(self.casas_livres()) == 0
+            and not self.vencedor("X")
+            and not self.vencedor("O")
+        )
+
+    def jogar(self, posicao, jogador):
+        if self.tabuleiro[posicao] == " ":
+            self.tabuleiro[posicao] = jogador
+            return True
+
+        return False
+
+
+class IAProbabilistica:
+
+    def __init__(self, marcador="O", humano="X", temperatura=1.0):
+        self.marcador = marcador
+        self.humano = humano
+
+        # Quanto maior, mais aleatória a IA.
+        # Quanto menor, mais ela escolhe as melhores jogadas.
+        self.temperatura = temperatura
+
+    def avaliar_jogada(self, jogo, posicao):
+        score = 0
+
+        # -----------------------------------
+        # 1. IA consegue ganhar?
+        # -----------------------------------
+
+        jogo.tabuleiro[posicao] = self.marcador
+
+        if jogo.vencedor(self.marcador):
+            score += 100
+
+        jogo.tabuleiro[posicao] = " "
+
+        # -----------------------------------
+        # 2. Humano conseguiria ganhar?
+        # -----------------------------------
+
+        jogo.tabuleiro[posicao] = self.humano
+
+        if jogo.vencedor(self.humano):
+            score += 80
+
+        jogo.tabuleiro[posicao] = " "
+
+        # -----------------------------------
+        # 3. Preferência pelo centro
+        # -----------------------------------
+
+        if posicao == 4:
+            score += 15
+
+        # -----------------------------------
+        # 4. Preferência pelos cantos
+        # -----------------------------------
+
+        if posicao in [0, 2, 6, 8]:
+            score += 10
+
+        # -----------------------------------
+        # 5. Laterais
+        # -----------------------------------
+
+        if posicao in [1, 3, 5, 7]:
+            score += 5
+
+        # -----------------------------------
+        # 6. Analisa possibilidades futuras
+        # -----------------------------------
+
+        for combinacao in jogo.combinacoes:
+
+            if posicao not in combinacao:
+                continue
+
+            valores = [
+                jogo.tabuleiro[i]
+                for i in combinacao
+            ]
+
+            quantidade_ia = valores.count(self.marcador)
+            quantidade_humano = valores.count(self.humano)
+
+            # Linha favorável para IA
+            if quantidade_humano == 0:
+
+                if quantidade_ia == 1:
+                    score += 8
+
+                elif quantidade_ia == 2:
+                    score += 25
+
+            # Linha perigosa criada pelo humano
+            if quantidade_ia == 0:
+
+                if quantidade_humano == 1:
+                    score += 4
+
+                elif quantidade_humano == 2:
+                    score += 20
+
+        return score
+
+    def calcular_probabilidades(self, jogo):
+        casas = jogo.casas_livres()
+
+        scores = []
+
+        for posicao in casas:
+            score = self.avaliar_jogada(jogo, posicao)
+            scores.append(score)
+
+        # -----------------------------------
+        # Softmax
+        # -----------------------------------
+        #
+        # transforma os scores em probabilidades
+        #
+
+        maior_score = max(scores)
+
+        valores_exp = []
+
+        for score in scores:
+
+            valor = math.exp(
+                (score - maior_score)
+                / self.temperatura
+            )
+
+            valores_exp.append(valor)
+
+        soma = sum(valores_exp)
+
+        probabilidades = [
+            valor / soma
+            for valor in valores_exp
+        ]
+
+        return casas, scores, probabilidades
+
+    def escolher_jogada(self, jogo):
+
+        casas, scores, probabilidades = (
+            self.calcular_probabilidades(jogo)
+        )
+
+        print("\nAnálise da IA:")
+
+        for casa, score, probabilidade in zip(
+            casas,
+            scores,
+            probabilidades
+        ):
+            print(
+                f"Casa {casa + 1}: "
+                f"score = {score:3} | "
+                f"probabilidade = {probabilidade * 100:.2f}%"
+            )
+
+        # Sorteia baseado nas probabilidades
+        escolha = random.choices(
+            casas,
+            weights=probabilidades,
+            k=1
+        )[0]
+
+        print(f"\nIA escolheu a casa {escolha + 1}")
+
+        return escolha
+
+
+def main():
+
+    jogo = JogoDaVelha()
+
+    # temperatura controla a aleatoriedade
+    #
+    # 0.3 = IA muito competitiva
+    # 1.0 = equilibrada
+    # 3.0 = mais aleatória
+
+    ia = IAProbabilistica(
+        marcador="O",
+        humano="X",
+        temperatura=3.0
+    )
+
+    print("============================")
+    print("      JOGO DA VELHA")
+    print("============================")
+
+    print("\nVocê joga com X.")
+    print("A IA joga com O.")
+
+    print("\nPosições:")
+    jogo.mostrar_posicoes()
+
+    while True:
+
+        # ========================
+        # Jogada humana
+        # ========================
+
+        while True:
+
+            try:
+                jogada = int(
+                    input("Digite sua jogada (1-9): ")
+                ) - 1
+
+                if jogada not in range(9):
+                    print("Escolha uma posição de 1 até 9.")
+                    continue
+
+                if jogo.jogar(jogada, "X"):
+                    break
+
+                print("Essa posição já está ocupada.")
+
+            except ValueError:
+                print("Digite um número válido.")
+
+        jogo.mostrar_tabuleiro()
+
+        if jogo.vencedor("X"):
+            print("Você venceu!")
+            break
+
+        if jogo.empate():
+            print("Empate!")
+            break
+
+        # ========================
+        # Jogada da IA
+        # ========================
+
+        posicao_ia = ia.escolher_jogada(jogo)
+
+        jogo.jogar(posicao_ia, "O")
+
+        jogo.mostrar_tabuleiro()
+
+        if jogo.vencedor("O"):
+            print("A IA venceu!")
+            break
+
+        if jogo.empate():
+            print("Empate!")
+            break
+
+
+if __name__ == "__main__":
+    main()
