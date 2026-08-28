@@ -1,0 +1,174 @@
+VITORIAS_POSSIVEIS = [
+    [0,1,2], [3,4,5], [6,7,8], # Linhas
+    [0,3,6], [1,4,7], [2,5,8], # Colunas
+    [0,4,8], [2,4,6] # Diagonais
+]
+
+
+# Função de impressão do tabuleiro
+def print_tabuleiro(espacos):
+    print("\n")
+
+    for i in range(0, 9, 3):
+        coluna0 = espacos[i] if espacos[i] != ' ' else str(i)
+        coluna1 = espacos[i+1] if espacos[i+1] != ' ' else str(i+1)
+        coluna2 = espacos[i+2] if espacos[i+2] != ' ' else str(i+2)
+
+        print(f" {coluna0} | {coluna1} | {coluna2} ")
+
+        if i < 6:
+            print("---+---+---")
+
+    print("\n")
+
+
+# Função de verificação de vitória
+def verifica_vitoria(espacos):
+    for combo in VITORIAS_POSSIVEIS:
+        if espacos[combo[0]] == espacos[combo[1]] == espacos[combo[2]] != ' ':
+            return espacos[combo[0]]
+
+    if ' ' not in espacos:
+        return 'Empate'
+
+    return None
+
+
+# Verifica se uma jogada faria determinado jogador vencer
+def jogada_da_vitoria(espacos, posicao, jogador):
+    if espacos[posicao] != ' ':
+        return False
+
+    espacos[posicao] = jogador
+
+    venceu = verifica_vitoria(espacos) == jogador
+
+    espacos[posicao] = ' '
+
+    return venceu
+
+
+# Calcula a pontuação de uma posição para a IA
+def calcular_pontuacao(espacos, posicao):
+
+    # Se a IA puder vencer nessa posição
+    if jogada_da_vitoria(espacos, posicao, 'O'):
+        return 100
+
+    # Se o jogador X puder vencer nessa posição,
+    # a IA deve bloquear
+    if jogada_da_vitoria(espacos, posicao, 'X'):
+        return 90
+
+    # Centro
+    if posicao == 4:
+        return 50
+
+    # Cantos
+    if posicao in [0, 2, 6, 8]:
+        return 30
+
+    # Laterais
+    return 10
+
+
+# IA testa todas as posições e escolhe a maior pontuação
+def melhor_movimento(espacos):
+    melhor_pontuacao = -1
+    movimento = -1
+
+    for i in range(9):
+
+        if espacos[i] == ' ':
+
+            pontuacao = calcular_pontuacao(
+                espacos,
+                i
+            )
+
+            if pontuacao > melhor_pontuacao:
+                melhor_pontuacao = pontuacao
+                movimento = i
+
+    return movimento
+
+
+# Função de jogar
+def jogar():
+    espacos = [' '] * 9
+
+    turno_jogador_x = True
+
+    print("Você joga com 'X' e a IA joga com 'O'.")
+
+    primeiro_a_jogar = input(
+        "Deseja ser o primeiro a jogar? (s/n): "
+    ).strip().lower()
+
+    turno_jogador_x = primeiro_a_jogar == 's'
+
+    while True:
+
+        print_tabuleiro(espacos)
+
+        resultado = verifica_vitoria(espacos)
+
+        if resultado is not None:
+
+            if resultado == 'Empate':
+                print("Deu empate!")
+
+            elif resultado == 'X':
+                print("Vitória do jogador X!")
+
+            else:
+                print("Vitória da IA!")
+
+            break
+
+        jogador_atual = 'X' if turno_jogador_x else 'O'
+
+        print(f"Vez do jogador: {jogador_atual}")
+
+        try:
+
+            # Jogada do jogador
+            if turno_jogador_x:
+
+                entrada_dados = input(
+                    "Jogador X, escolha um quadrante de 0 a 8: "
+                )
+
+                jogada = int(entrada_dados)
+
+                if (
+                    jogada < 0
+                    or jogada > 8
+                    or espacos[jogada] != ' '
+                ):
+                    print(
+                        "Jogada inválida, tente novamente!"
+                    )
+                    continue
+
+                espacos[jogada] = 'X'
+
+            # Jogada da IA
+            else:
+
+                jogada_ia = melhor_movimento(espacos)
+
+                espacos[jogada_ia] = 'O'
+
+                print(
+                    f"A IA escolheu o quadrante {jogada_ia}."
+                )
+
+            # Altera o turno
+            turno_jogador_x = not turno_jogador_x
+
+        except ValueError:
+            print("Digite apenas números de 0 a 8!")
+
+
+jogar()
